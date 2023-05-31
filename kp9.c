@@ -1,0 +1,169 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_RECORDS 100
+#define KEY_LENGTH 6
+
+typedef struct {
+    char key[KEY_LENGTH];
+    char data[100];
+} Record;
+
+void merge(Record arr[], int left, int middle, int right) {
+    int i, j, k;
+    int n1 = middle - left + 1;
+    int n2 = right - middle;
+
+    Record leftArr[n1], rightArr[n2];
+
+    for (i = 0; i < n1; i++)
+        leftArr[i] = arr[left + i];
+    for (j = 0; j < n2; j++)
+        rightArr[j] = arr[middle + 1 + j];
+
+    i = 0;
+    j = 0;
+    k = left;
+    while (i < n1 && j < n2) {
+        if (strcmp(leftArr[i].key, rightArr[j].key) <= 0) {
+            arr[k] = leftArr[i];
+            i++;
+        } else {
+            arr[k] = rightArr[j];
+            j++;
+        }
+        k++;
+    }
+
+    while (i < n1) {
+        arr[k] = leftArr[i];
+        i++;
+        k++;
+    }
+
+    while (j < n2) {
+        arr[k] = rightArr[j];
+        j++;
+        k++;
+    }
+}
+
+void mergeSort(Record arr[], int left, int right) {
+    if (left < right) {
+        int middle = left + (right - left) / 2;
+
+        mergeSort(arr, left, middle);
+        mergeSort(arr, middle + 1, right);
+
+        merge(arr, left, middle, right);
+    }
+}
+
+int binarySearch(Record arr[], int left, int right, char* key) {
+    while (left <= right) {
+        int middle = left + (right - left) / 2;
+
+        if (strcmp(arr[middle].key, key) == 0)
+            return middle;
+
+        if (strcmp(arr[middle].key, key) < 0)
+            left = middle + 1;
+        else
+            right = middle - 1;
+    }
+
+    return -1;
+}
+
+void printTable(Record arr[], int n) {
+    for (int i = 0; i < n; i++) {
+        printf("%s - %s\n", arr[i].key, arr[i].data);
+    }
+}
+
+void writeTableToFile(Record arr[], int n, FILE* file) {
+    for (int i = 0; i < n; i++) {
+        fprintf(file, "%s - %s\n", arr[i].key, arr[i].data);
+    }
+}
+
+int main() {
+    Record table[MAX_RECORDS];
+    int numRecords;
+
+    FILE* inputFile = fopen("input.txt", "r");
+    if (inputFile == NULL) {
+        printf("Failed to open input file.\n");
+        return 1;
+    }
+
+    // Ввод значений элементов таблицы из файла
+    fscanf(inputFile, "%d", &numRecords);
+
+    for (int i = 0; i < numRecords; i++) {
+        fscanf(inputFile, "%s", table[i].key);
+        fgets(table[i].data, 100, inputFile);
+        // Удаление символа новой строки из строки данных
+        table[i].data[strcspn(table[i].data, "\n")] = '\0';
+    }
+
+    fclose(inputFile);
+
+    // Проверка сортировки в трех случаях
+
+    // (1) Элементы таблицы с самого начала упорядочены
+    mergeSort(table, 0, numRecords - 1);
+    printf("Sorted table (case 1):\n");
+    printTable(table, numRecords);
+    printf("\n");
+
+    // (2) Элементы таблицы расставлены в обратном порядке
+    for (int i = 0; i < numRecords / 2; i++) {
+        Record temp = table[i];
+        table[i] = table[numRecords - i - 1];
+        table[numRecords - i - 1] = temp;
+    }
+    mergeSort(table, 0, numRecords - 1);
+    printf("Sorted table (case 2):\n");
+    printTable(table, numRecords);
+    printf("\n");
+
+    // (3) Элементы таблицы не упорядочены (генерация случайных ключей)
+    for (int i = 0; i < numRecords; i++) {
+        for (int j = 0; j < KEY_LENGTH - 1; j++) {
+            table[i].key[j] = 'A' + rand() % 26;  // генерация случайной буквы
+        }
+        table[i].key[KEY_LENGTH - 1] = '\0';
+    }
+    mergeSort(table, 0, numRecords - 1);
+    printf("Sorted table (case 3):\n");
+    printTable(table, numRecords);
+    printf("\n");
+
+    // Запись упорядоченной таблицы в файл
+    FILE* outputFile = fopen("output.txt", "w");
+    if (outputFile == NULL) {
+        printf("Failed to open output file.\n");
+        return 1;
+    }
+
+    writeTableToFile(table, numRecords, outputFile);
+
+    fclose(outputFile);
+
+    // Поиск по ключу в упорядоченной таблице
+    char searchKey[KEY_LENGTH];
+    printf("Enter a key to search for: ");
+    scanf("%s", searchKey);
+
+    int result = binarySearch(table, 0, numRecords - 1, searchKey);
+    if (result != -1) {
+        printf("\nKey found at index %d.\n", result);
+        printf("%s - %s\n", table[result].key, table[result].data);
+    } else {
+        printf("\nKey not found.\n");
+    }
+
+    return 0;
+}
